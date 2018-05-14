@@ -1,0 +1,87 @@
+---
+title: "Midwater Trawl Data"
+author: "Elan Portner"
+date: "5/13/2018"
+output: html_document
+---
+
+```{r, echo=FALSE, message=FALSE, error=FALSE, warning=FALSE, include=FALSE}
+library(marmap)
+library(mapplots)
+library(RColorBrewer)
+library(ggplot2)
+
+coul <- brewer.pal(11, "RdBu")
+coul <- colorRampPalette(coul)(100)
+coul2 <- brewer.pal(11, "RdBu")
+coul2 <- colorRampPalette(coul2)(36)
+
+loc <- read.csv("WSC_trawl_metadata.csv")[,c(2,4,5)]
+comp <- read.csv("WSC_trawl_composition.csv")[,c(1:5)]
+
+I <- which(comp$Family == "Hyperiidae"|comp$Family == "Lysanassoidea"|comp$Family == "",comp$Family == "Amphipoda")
+
+comp <- comp[-I,]
+comp$count <- 1
+
+# trawlcomp <- aggregate(count~Tow*Species, comp, FUN = sum)
+
+trawl <- merge(comp, loc, by = "Tow")
+trawl <- trawl[,c(1:3,6:8)]
+
+colnames(trawl) <- c("tow","family", "species", "count", "lat", "lon")
+
+
+
+#color palettes for map 
+jet.colors <-colorRampPalette(c("#00007F", "blue", "#007FFF", "cyan","#7FFF7F", "yellow", "#FF7F00", "red", "#7F0000"))
+colorRampPalette(c("white","white")) -> whites
+
+
+```
+
+
+```{r, echo=FALSE, message=FALSE, error=FALSE, warning=FALSE, include=FALSE}
+#plot of data on a map
+data(hawaii)
+get.area(hawaii, level.inf=0, level.sup=4300) -> land
+
+
+#locations of centers of each square (for n=4  squares)
+X=-1*unique(trawl$lon)
+Y=unique(trawl$lat)
+x=c(-1*trawl$lon)
+y=c(trawl$lat)
+#x=x[-2]
+#y=y[-2]
+
+
+### Plot sample distribution by size class (break at 96cm)
+plot(hawaii, image=T,deep=0,shallow=0,bpal=whites(10),xlim=c(-150,-120),ylim=c(20,30), xlab = "Degrees Longitude", ylab = "Degrees Latitude", family = "Times", axes = TRUE)
+image(land$Lon, land$Lat,land$Area, col=c(rgb(1,1,1),rgb(0,0,0)),xlim=c(-150,-120),ylim=c(20,30), add=TRUE)  
+#you can play with the second rgb to change the land color
+
+FG=as.list(sort(unique(trawl$family)))
+counts=array(0,dim=c(length(x),length(FG)))
+for (i in 1:length(x)) {
+  I=which(trawl$lat==y[i] & trawl$lon==-x[i])
+  temp=trawl[I,]
+  for (j in 1:length(FG)) {
+    J=which(temp$family==FG[[j]])
+    counts[i,j]=sum(temp$count[J],na.rm=TRUE) 
+ 
+     }
+ 
+  add.pie(z=counts[i,],labels=NA,-x[i],y[i],radius=(sqrt(sum(counts[i,])/12))/(pi), col = coul2)  #radius controls the size of the pie charts
+  #text(x[i],y[i]+9.8,paste('n =',length(unique(temp$specimen))), family = "Times")
+  #add.pie(z=dat$x,labels=NA,x[i],y[i],radius=4,col=jet.colors(length(dat$x)))  #radius controls the size of the pie charts
+}
+legend(-150, 12,inset = 0.15, legend=unlist(FG),pt.bg= coul2,pch=22, pt.cex = 3, title = "Species", cex = .8, bty = "n")
+
+
+```
+
+```{r, echo=FALSE, message=FALSE, error=FALSE, warning=FALSE, include=FALSE}
+
+```
+
